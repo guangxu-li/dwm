@@ -23,7 +23,7 @@ index 5e4d494..5eb3d5f 100644
 @@ -82,6 +82,7 @@ typedef struct {
  	const Arg arg;
  } Button;
- 
+
 +typedef struct Clientlist Clientlist;
  typedef struct Monitor Monitor;
  typedef struct Client Client;
@@ -42,7 +42,7 @@ index 5e4d494..5eb3d5f 100644
 @@ -141,12 +141,18 @@ typedef struct {
  	int monitor;
  } Rule;
- 
+
 +struct Clientlist {
 +	Client *clients;
 +	Client *stack;
@@ -72,7 +72,7 @@ index 5e4d494..5eb3d5f 100644
  static Monitor *mons, *selmon;
  static Window root, wmcheckwin;
 +static Clientlist *cl;
- 
+
  /* configuration, allows nested code to access above variables */
  #include "config.h"
 @@ -300,7 +307,7 @@ applyrules(Client *c)
@@ -139,7 +139,7 @@ index 5e4d494..5eb3d5f 100644
 +				arrange(tm);
 +
  }
- 
+
  void
  attachstack(Client *c)
  {
@@ -148,7 +148,7 @@ index 5e4d494..5eb3d5f 100644
 +	c->snext = c->mon->cl->stack;
 +	c->mon->cl->stack = c;
  }
- 
+
  void
 @@ -478,8 +519,8 @@ cleanup(void)
  	view(&a);
@@ -186,7 +186,7 @@ index 5e4d494..5eb3d5f 100644
 -	Monitor *m;
 +	Monitor *m, *tm;
 +	int i;
- 
+
 +	/* bail out if the number of monitors exceeds the number of tags */
 +	for (i=1, tm=mons; tm; i++, tm=tm->next);
 +	if (i > LENGTH(tags)) {
@@ -216,20 +216,20 @@ index 5e4d494..5eb3d5f 100644
 @@ -660,7 +722,7 @@ detach(Client *c)
  {
  	Client **tc;
- 
+
 -	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 +	for (tc = &c->mon->cl->clients; *tc && *tc != c; tc = &(*tc)->next);
  	*tc = c->next;
  }
- 
+
 @@ -669,11 +731,11 @@ detachstack(Client *c)
  {
  	Client **tc, *t;
- 
+
 -	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 +	for (tc = &c->mon->cl->stack; *tc && *tc != c; tc = &(*tc)->snext);
  	*tc = c->snext;
- 
+
  	if (c == c->mon->sel) {
 -		for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
 +		for (t = c->mon->cl->stack; t && !ISVISIBLE(t, c->mon); t = t->snext);
@@ -239,7 +239,7 @@ index 5e4d494..5eb3d5f 100644
 @@ -709,7 +771,7 @@ drawbar(Monitor *m)
  		drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
  	}
- 
+
 -	for (c = m->clients; c; c = c->next) {
 +	for (c = m->cl->clients; c; c = c->next) {
  		occ |= c->tags;
@@ -281,7 +281,7 @@ index 5e4d494..5eb3d5f 100644
 @@ -1107,12 +1169,12 @@ monocle(Monitor *m)
  	unsigned int n = 0;
  	Client *c;
- 
+
 -	for (c = m->clients; c; c = c->next)
 -		if (ISVISIBLE(c))
 +	for (c = m->cl->clients; c; c = c->next)
@@ -293,10 +293,10 @@ index 5e4d494..5eb3d5f 100644
 +	for (c = nexttiled(m->cl->clients, m); c; c = nexttiled(c->next, m))
  		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
  }
- 
+
 @@ -1194,9 +1256,9 @@ movemouse(const Arg *arg)
  }
- 
+
  Client *
 -nexttiled(Client *c)
 +nexttiled(Client *c, Monitor *m)
@@ -305,7 +305,7 @@ index 5e4d494..5eb3d5f 100644
 +	for (; c && (c->isfloating || !ISVISIBLE(c, m)); c = c->next);
  	return c;
  }
- 
+
 @@ -1360,8 +1422,8 @@ restack(Monitor *m)
  	if (m->lt[m->sellt]->arrange) {
  		wc.stack_mode = Below;
@@ -374,12 +374,12 @@ index 5e4d494..5eb3d5f 100644
 @@ -1677,7 +1755,7 @@ tile(Monitor *m)
  	unsigned int i, n, h, mw, my, ty;
  	Client *c;
- 
+
 -	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 +	for (n = 0, c = nexttiled(m->cl->clients, m); c; c = nexttiled(c->next, m), n++);
  	if (n == 0)
  		return;
- 
+
 @@ -1685,7 +1763,7 @@ tile(Monitor *m)
  		mw = m->nmaster ? m->ww * m->mfact : 0;
  	else
@@ -395,7 +395,7 @@ index 5e4d494..5eb3d5f 100644
  {
 +	Monitor *m;
  	unsigned int newtags;
- 
+
  	if (!selmon->sel)
  		return;
  	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
@@ -413,7 +413,7 @@ index 5e4d494..5eb3d5f 100644
  {
 +	Monitor *m;
  	unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
- 
+
  	if (newtagset) {
 +		/* prevent displaying the same tags on multiple monitors */
 +		for(m = mons; m; m = m->next)
@@ -435,9 +435,9 @@ index 5e4d494..5eb3d5f 100644
 +		}
  	}
  }
- 
+
 @@ -1844,7 +1942,7 @@ updateclientlist()
- 
+
  	XDeleteProperty(dpy, root, netatom[NetClientList]);
  	for (m = mons; m; m = m->next)
 -		for (c = m->clients; c; c = c->next)
@@ -511,11 +511,11 @@ index 5e4d494..5eb3d5f 100644
  	arrange(selmon);
 +	focus(NULL);
  }
- 
+
  Client *
 @@ -2054,7 +2170,7 @@ wintoclient(Window w)
  	Monitor *m;
- 
+
  	for (m = mons; m; m = m->next)
 -		for (c = m->clients; c; c = c->next)
 +		for (c = m->cl->clients; c; c = c->next)
@@ -533,6 +533,5 @@ index 5e4d494..5eb3d5f 100644
  			return;
  	pop(c);
  }
--- 
+--
 2.33.0
-
