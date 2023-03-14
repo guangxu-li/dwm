@@ -16,7 +16,7 @@ index 1c0b587..5708487 100644
 @@ -36,11 +36,14 @@ static const float mfact     = 0.55; /* factor of master area size [0.05..0.95]
  static const int nmaster     = 1;    /* number of clients in master area */
  static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
- 
+
 +#include "fibonacci.c"
  static const Layout layouts[] = {
  	/* symbol     arrange function */
@@ -26,7 +26,7 @@ index 1c0b587..5708487 100644
 + 	{ "[@]",      spiral },
 + 	{ "[\\]",      dwindle },
  };
- 
+
  /* key definitions */
 @@ -76,6 +79,8 @@ static Key keys[] = {
  	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
@@ -51,12 +51,12 @@ index 0000000..fce0a57
 +	for(n = 0, c = nexttiled(mon->clients); c; c = nexttiled(c->next), n++);
 +	if(n == 0)
 +		return;
-+	
++
 +	nx = mon->wx;
 +	ny = 0;
 +	nw = mon->ww;
 +	nh = mon->wh;
-+	
++
 +	for(i = 0, c = nexttiled(mon->clients); c; c = nexttiled(c->next)) {
 +		if((i % 2 && nh / 2 > 2 * c->bw)
 +		   || (!(i % 2) && nw / 2 > 2 * c->bw)) {
@@ -109,6 +109,5 @@ index 0000000..fce0a57
 +spiral(Monitor *mon) {
 +	fibonacci(mon, 0);
 +}
--- 
+--
 2.20.1
-
