@@ -16,7 +16,7 @@ index 061ad66..5eb37ed 100644
 @@ -31,6 +31,11 @@ static const Rule rules[] = {
  	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
  };
- 
+
 +/* window following */
 +#define WFACTIVE '>'
 +#define WFINACTIVE 'v'
@@ -75,11 +75,11 @@ index e5efb6a..6d86a9c 100644
  enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
 -       ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 +       ClkClientWin, ClkRootWin, ClkFollowSymbol, ClkLast }; /* clicks */
- 
+
  typedef union {
  	int i;
 @@ -113,6 +113,7 @@ typedef struct {
- 
+
  struct Monitor {
  	char ltsymbol[16];
 +	char wfsymbol[2];
@@ -114,11 +114,11 @@ index e5efb6a..6d86a9c 100644
 +	m->wfsymbol[1] = '\0';
  	return m;
  }
- 
+
 @@ -735,6 +741,9 @@ drawbar(Monitor *m)
  	drw_setscheme(drw, scheme[SchemeNorm]);
  	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
- 
+
 +	w = TEXTW(m->wfsymbol);
 +	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->wfsymbol, 0);
 +
@@ -132,7 +132,7 @@ index e5efb6a..6d86a9c 100644
 +	if (selmon->wfsymbol[0] == WFACTIVE)
 +		view(arg);
  }
- 
+
  void
 @@ -1664,6 +1675,8 @@ tagmon(const Arg *arg)
  	if (!selmon->sel || !mons->next)
@@ -141,12 +141,12 @@ index e5efb6a..6d86a9c 100644
 +	if (selmon->wfsymbol[0] == WFACTIVE)
 +		focusmon(arg);
  }
- 
+
  void
 @@ -1703,6 +1716,13 @@ togglebar(const Arg *arg)
  	arrange(selmon);
  }
- 
+
 +void
 +togglefollow(const Arg *arg)
 +{
@@ -157,6 +157,5 @@ index e5efb6a..6d86a9c 100644
  void
  togglefloating(const Arg *arg)
  {
--- 
+--
 2.37.3
-
